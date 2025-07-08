@@ -181,10 +181,11 @@ class ArxivSummarizer:
                 filtered_lines.append(line)
         return filtered_lines
 
-    def get_paper_links_from_arxiv_page(self, url: str) -> list:
+    def get_paper_links_from_arxiv_page(self, category: str) -> list:
         """
-        Fetches all paper links (starting with /abs/) from an arXiv page.
+        Fetches all paper links (starting with /abs/) from an arXiv page for a given category.
         """
+        url = f"https://arxiv.org/list/{category}/new"
         logging.info(f"Fetching paper links from: {url}")
         try:
             response = requests.get(url)
@@ -193,15 +194,29 @@ class ArxivSummarizer:
             links = [
                 a["href"] for a in soup.find_all("a", href=True) if a["href"].startswith("/abs/")
             ]
-            logging.info(f"Found {len(links)} raw links.")
+            logging.info(f"Found {len(links)} raw links for category {category}.")
             return links
         except requests.exceptions.RequestException as e:
-            logging.error(f"Network error fetching arXiv page {url}: {e}")
-            return []  # Re-raise the exception to be handled upstream
-        except Exception as e:
-            # Use _handle_exception for consistency if it should halt execution
-            logging.error(f"Error parsing arXiv page {url}: {e}")
+            logging.error(f"Network error fetching arXiv page {url} for category {category}: {e}")
             return []
+        except Exception as e:
+            logging.error(f"Error parsing arXiv page {url} for category {category}: {e}")
+            return []
+
+    def get_all_paper_links(self, categories: str | list[str]) -> list:
+        """
+        Fetches paper links for one or more arXiv categories, removes duplicates, and returns a combined list.
+        """
+        all_links = set()
+        if isinstance(categories, str):
+            categories = [categories]  # Convert single category to a list
+
+        for category in categories:
+            links = self.get_paper_links_from_arxiv_page(category)
+            all_links.update(links)
+
+        logging.info(f"Found {len(all_links)} unique paper links across all categories.")
+        return list(all_links)
 
     def get_paper_metadata(self, paper_id: str) -> dict:
         """
@@ -327,13 +342,15 @@ class ArxivSummarizer:
             return 0  # Default to low relevance on general error
 
     def process_arxiv_url(
-        self, category: str, user_interest: str | None = None, filter_level: str = "none"
+        self,
+        categories: str | list[str],
+        user_interest: str | None = None,
+        filter_level: str = "none",
     ) -> list[dict] | None:
         """
         Main function to orchestrate the process of fetching, summarizing, and evaluating papers.
         Returns a list of processed paper metadata dictionaries.
         """
-        arxiv_url = f"https://arxiv.org/list/{category}/new"
         papers = []
 
         # Define relevance score mapping for filtering
@@ -346,7 +363,7 @@ class ArxivSummarizer:
         min_relevance_score = relevance_thresholds.get(filter_level.lower(), -1)
 
         try:
-            paper_links = self.get_paper_links_from_arxiv_page(arxiv_url)
+            paper_links = self.get_all_paper_links(categories)
 
             for link in paper_links:
                 paper_id = link.split("/")[-1]
@@ -478,13 +495,13 @@ class ArxivSummarizer:
 
     def run(
         self,
-        category: str,
+        categories: str | list[str],
         max_papers_split: int = 10,
         user_interest: str | None = None,
         filter_level: str = "none",
     ):
-        logging.info(f"Starting Arxiv summarization for category: {category}")
-        papers = self.process_arxiv_url(category, user_interest, filter_level)
+        logging.info(f"Starting Arxiv summarization for categories: {categories}")
+        papers = self.process_arxiv_url(categories, user_interest, filter_level)
         if not papers:
             logging.warning("Processing failed or no papers were found. Exiting.")
             return  # Exit gracefully if no papers or error during processing
@@ -514,7 +531,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Summarize Arxiv papers.")
     parser.add_argument(
-        "category", nargs="?", default="eess.AS", help="Arxiv category (default: eess.AS)"
+        "category",
+        nargs="+",
+        default=["eess.AS"],
+        help="Arxiv category or categories (default: eess.AS). Provide multiple categories separated by spaces.",
     )
     parser.add_argument(
         "--max_papers_split",

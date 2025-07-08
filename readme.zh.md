@@ -3,13 +3,13 @@
  * @Date: 2025-06-26 10:25:19
  * @Description: 
  * @FilePath: /arxiv-summary/readme.zh.md
- * @LastEditTime: 2025-07-02 15:11:37
--->
-# Arxiv 论文摘要工具 (OpenAI + 飞书)
+ * @LastEditTime: 2025-07-08 18:16:13
+ -->
+ # Arxiv 论文摘要工具 (OpenAI + 飞书)
 
 [English](readme.md)
 
-本项目通过 OpenAI API 自动抓取并总结 Arxiv 上指定领域的最新论文，并将摘要推送到飞书（Lark）群聊。整个流程通过 GitHub Actions 定时运行，方便你每日跟进最新科研动态。
+本项目自动抓取并通过 OpenAI API 总结 Arxiv 上指定领域的最新论文，并将摘要推送到飞书（Lark）群聊。整个流程通过 GitHub Actions 定时运行，方便你每日跟进最新科研动态。
 
 ## 准备工作
 
@@ -80,8 +80,9 @@
 4.  **运行脚本：** 使用你想要的参数执行脚本。
 
     ```bash
-    python arxiv_summarizer.py eess.AS --user_interest "语音处理, 音频合成" --filter_level "mid"
+    python arxiv_summarizer.py eess.AS cs.AI --user_interest "语音处理, 音频合成" --filter_level "mid"
     ```
+    你可以提供多个领域，用空格分隔。
 
 5.  **使用 Cron (macOS/Linux) 定时运行：** 要让脚本按计划自动运行，你可以使用 `cron`。
 
@@ -104,10 +105,10 @@
 脚本默认总结 `eess.AS` (音频与语音处理) 领域的论文。你可以通过修改 `.github/workflows/eess.AS.yml` 文件中的启动命令，来自定义关注的领域、兴趣点和过滤强度：
 
 ```yaml
-      run: python arxiv_summarizer.py 你想关注的领域 --user_interest "你的兴趣点" --filter_level "mid"
+      run: python arxiv_summarizer.py "eess.AS" "cs.AI" --user_interest "你的兴趣点" --filter_level "mid"
 ```
 
-*   将 `你想关注的领域` 替换为感兴趣的 Arxiv 领域代码（例如 `cs.AI`, `math.ST`）。你可以在 Arxiv 官网找到所有领域的代码。
+*   将 `"eess.AS" "cs.AI"` 替换为感兴趣的 Arxiv 领域代码（例如 `cs.AI`, `math.ST`）。你可以提供一个或多个领域，用空格分隔。你可以在 Arxiv 官网找到所有领域的代码。
 *   `--user_interest`：指定你的具体研究兴趣，用逗号分隔（例如 `"机器学习, 自然语言处理"`）。如果提供了此参数，脚本会根据相关性对论文进行打分和排序；否则，所有论文相关性分数为 0。
 *   `--filter_level`：根据相关性分数过滤论文。可选值为 `low` (分数>=0), `mid` (分数>=1), `high` (分数>=2) 或 `none` (不过滤)。设置过滤等级后，只有高于或等于该等级的论文才会被总结。这可以有效节省无关论文的 token 开销。
 

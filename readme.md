@@ -3,7 +3,7 @@
  * @Date: 2025-06-24 11:29:48
  * @Description: 
  * @FilePath: /arxiv-summary/readme.md
- * @LastEditTime: 2025-07-02 15:12:17
+ * @LastEditTime: 2025-07-08 18:13:31
 -->
 # Arxiv Summarizer with OpenAI and Feishu Webhook
 
@@ -85,8 +85,9 @@ Follow these steps to run the summarizer on your local machine.
 4.  **Run the Script:** Execute the script with your desired arguments.
 
     ```bash
-    python arxiv_summarizer.py eess.AS --user_interest "speech processing, audio synthesis" --filter_level "mid"
+    python arxiv_summarizer.py eess.AS cs.AI --user_interest "speech processing, audio synthesis" --filter_level "mid"
     ```
+    You can provide multiple categories separated by spaces.
 
 5.  **Schedule with Cron (macOS/Linux):** To run the script automatically on a schedule, you can use `cron`.
 
@@ -109,10 +110,10 @@ Follow these steps to run the summarizer on your local machine.
 *   **Subject Category, User Interest, and Filtering:** The script currently summarizes papers from the `eess.AS` category (Audio and Speech Processing). You can customize the behavior by modifying the arguments passed to the `arxiv_summarizer.py` script in the `.github/workflows/eess.AS.yml` file:
 
     ```yaml
-        run: python arxiv_summarizer.py YOUR_CATEGORY --user_interest "your, interests" --filter_level "mid"
+        run: python arxiv_summarizer.py "eess.AS" "cs.AI" --user_interest "your, interests" --filter_level "mid"
     ```
 
-    *   Replace `YOUR_CATEGORY` with the desired Arxiv subject category code (e.g., `cs.AI`, `math.ST`). Refer to the Arxiv documentation for a list of available categories.
+    *   Replace `"eess.AS" "cs.AI"` with your desired Arxiv subject category codes (e.g., `cs.AI`, `math.ST`). You can provide one or more categories separated by spaces. Refer to the Arxiv documentation for a list of available categories.
     *   Use `--user_interest` to specify your specific areas of interest (e.g., `"machine learning, NLP"`). If provided, papers will be scored for relevance and sorted. If omitted, all papers will have relevance 0.
     *   Use `--filter_level` to filter papers based on relevance. Options are `low` (score >=0), `mid` (score >=1), `high` (score >=2), or `none` (no filtering). If a filter level is set, only papers with relevance higher than or equal to the specified level will be summarized. This can help save tokens by avoiding summarization of less relevant papers.
 
