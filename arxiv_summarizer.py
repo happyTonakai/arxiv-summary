@@ -183,18 +183,49 @@ class ArxivSummarizer:
 
     def get_paper_links_from_arxiv_page(self, category: str) -> list:
         """
-        Fetches all paper links (starting with /abs/) from an arXiv page for a given category.
+        Fetches paper links (starting with /abs/) from an arXiv page for a given category,
+        excluding replacement submissions and keeping only new and cross submissions.
+
+        Args:
+            category (str): The arXiv category to fetch papers from.
+
+        Returns:
+            list: A list of paper links (with /abs/ prefix) excluding replacements.
         """
         url = f"https://arxiv.org/list/{category}/new"
         logging.info(f"Fetching paper links from: {url}")
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=60)
             response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
             soup = BeautifulSoup(response.content, "html.parser")
-            links = [
-                a["href"] for a in soup.find_all("a", href=True) if a["href"].startswith("/abs/")
-            ]
-            logging.info(f"Found {len(links)} raw links for category {category}.")
+
+            # Find all h3 headers which indicate submission types
+            links = []
+            skip_until_next_header = False
+
+            # Iterate through all elements after the first h3
+            for element in soup.find_all():
+                # If we find an h3 header
+                if element.name == "h3":
+                    header_text = element.get_text().lower()
+                    # Check if it's a replacement submission header
+                    if "replacement" in header_text:
+                        skip_until_next_header = True
+                    else:
+                        skip_until_next_header = False
+                    continue
+
+                # If we're skipping until the next header, continue
+                if skip_until_next_header:
+                    continue
+
+                # If we find an 'a' tag with href starting with '/abs/'
+                if element.name == "a" and element.get("href", "").startswith("/abs/"):
+                    links.append(element["href"])
+
+            logging.info(
+                f"Found {len(links)} paper links (excluding replacements) for category {category}."
+            )
             return links
         except requests.exceptions.RequestException as e:
             logging.error(f"Network error fetching arXiv page {url} for category {category}: {e}")
