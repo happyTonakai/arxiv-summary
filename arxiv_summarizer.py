@@ -463,7 +463,7 @@ Your response must be a single JSON object.
             logging.error(f"An unhandled error occurred during overall paper processing: {e}")
             return None
 
-    def send_arxiv_data_via_webhook(self, data_list: list, category_with_suffix: str):
+    def send_arxiv_data_via_webhook(self, data_list: list, workflow_name: str):
         """
         Sends Arxiv paper data in a single message to a webhook.
 
@@ -482,7 +482,7 @@ Your response must be a single JSON object.
         try:
             # Construct the message content by concatenating information from all papers.
             today = datetime.datetime.now().strftime("%Y-%m-%d")
-            message_text = f"{today} Arxiv papers summary for {category_with_suffix}:\n\n"
+            message_text = f"{today} Arxiv papers summary for {workflow_name}:\n\n"
             for paper_data in data_list:
                 message_text += f"Title: {paper_data['title']}\n"
                 message_text += f"{paper_data['translated_title']}\n"
@@ -515,25 +515,25 @@ Your response must be a single JSON object.
             # Send the request to the webhook.
             headers = {"Content-Type": "application/json"}
             logging.info(
-                f"Sending {len(data_list)} papers to webhook for category {category_with_suffix}..."
+                f"Sending {len(data_list)} papers to webhook for category {workflow_name}..."
             )
             response = requests.post(self.webhook_url, data=json_payload, headers=headers)
 
             # Check the response status code.
             if response.status_code == 200:
                 logging.info(
-                    f"Successfully sent data for {len(data_list)} papers in batch '{category_with_suffix}'."
+                    f"Successfully sent data for {len(data_list)} papers in batch '{workflow_name}'."
                 )
                 return response
             else:
                 logging.error(
-                    f"Error sending data for batch '{category_with_suffix}'. Status code: {response.status_code}. Response text: {response.text}"
+                    f"Error sending data for batch '{workflow_name}'. Status code: {response.status_code}. Response text: {response.text}"
                 )
                 return None
 
         except Exception as e:
             logging.error(
-                f"An error occurred while sending webhook for batch '{category_with_suffix}': {e}"
+                f"An error occurred while sending webhook for batch '{workflow_name}': {e}"
             )
             return None
 
@@ -543,8 +543,11 @@ Your response must be a single JSON object.
         max_papers_split: int = 10,
         user_interest: str | None = None,
         filter_level: str = "none",
+        workflow_name: str = "",
     ):
-        logging.info(f"Starting Arxiv summarization for categories: {categories}")
+        logging.info(
+            f"Starting Arxiv summarization for categories: {categories} with workflow {workflow_name}"
+        )
         papers = self.process_arxiv_url(categories, user_interest, filter_level)
         if not papers:
             logging.warning("Processing failed or no papers were found. Exiting.")
@@ -559,14 +562,13 @@ Your response must be a single JSON object.
             num_splits = (len(papers) + max_papers_split - 1) // max_papers_split
             split_size = (len(papers) + num_splits - 1) // num_splits
             papers_split = [papers[i : i + split_size] for i in range(0, len(papers), split_size)]
-            category = " ".join(categories)
             for i, papers in enumerate(papers_split):
                 if len(papers_split) == 1:
                     suffix = ""
                 else:
                     suffix = f" ({i+1}/{len(papers_split)})"
 
-                self.send_arxiv_data_via_webhook(papers, category + suffix)
+                self.send_arxiv_data_via_webhook(papers, workflow_name + suffix)
         else:
             logging.info("Webhook URL not configured. Papers will not be sent.")
 
@@ -600,12 +602,23 @@ if __name__ == "__main__":
         choices=["low", "mid", "high", "none"],
         help="Filter papers based on relevance: 'low' (score >=0), 'mid' (score >=1), 'high' (score >=2), 'none' (no filtering). Default: 'none'.",
     )
+    parser.add_argument(
+        "--workflow_name",
+        type=str,
+        help="Name of the workflow for logging purposes.",
+    )
 
     args = parser.parse_args()
 
     try:
         summarizer = ArxivSummarizer()
-        summarizer.run(args.category, args.max_papers_split, args.user_interest, args.filter_level)
+        summarizer.run(
+            args.category,
+            args.max_papers_split,
+            args.user_interest,
+            args.filter_level,
+            args.workflow_name,
+        )
     except ValueError as e:
         logging.critical(f"Configuration error: {e}. Please check your .env file.")
     except Exception as e:
