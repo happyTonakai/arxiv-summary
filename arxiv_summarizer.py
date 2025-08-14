@@ -609,6 +609,9 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    logging.info(
+        f"Running Arxiv summarizer with categories: {args.category}, max_papers_split: {args.max_papers_split}, user_interest: {args.user_interest}, filter_level: {args.filter_level}, workflow_name: {args.workflow_name}"
+    )
 
     try:
         summarizer = ArxivSummarizer()
