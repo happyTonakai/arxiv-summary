@@ -285,7 +285,7 @@ class ArxivSummarizer:
         Returns a dictionary with translated_title, summary, demo, and code.
         """
         prompt = f"""Analyze the following research paper and return a JSON object with following fields: "translated_title", "summary", "keywords", "demo", and "code".
-- "translated_title": Translate the paper's title to {self.summary_language}.
+- "translated_title": Translate the paper's title to {self.summary_language}, do not include any TeX formula.
 - "summary": A summary of the paper in {self.summary_language}, up to 3 sentences.
 - "keywords": A list of keywords related to the paper in {self.summary_language}, up to 3.
 - "demo": If the abstract mentions a demo page, provide the full URL. If not, this should be null.
