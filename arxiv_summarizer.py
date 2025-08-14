@@ -74,7 +74,7 @@ class ArxivSummarizer:
                     if r"\documentclass" in tex_content:
                         lines = tex_content.splitlines()
                         # Filter out lines containing LaTeX comments
-                        lines = [line for line in lines if not line.startswith("%")]
+                        lines = [line for line in lines if not line.startswith("% ")]
                         start_index = 0
                         end_index = min(len(lines), 150)
                         context_lines = lines[start_index:end_index]
@@ -88,18 +88,18 @@ class ArxivSummarizer:
                         Output Format:
                         - Only extract the top-level affiliation (e.g., University name, Company name, Research Institute name), avoiding overly specific details like departments, schools, or specific addresses.
                         - If there are affiliations, list them without numbering, separated by semicolons (;).
-                        - If the number of unique top-level affiliations is more than three, list the first three, followed by "etc." to indicate the rest.
+                        - If the number of unique top-level affiliations is more than three, list the first three, followed by \"etc.\" to indicate the rest.
                         - Respond in {self.summary_language}.
                         - If no affiliations are found, respond with 'None'.
                         - **Do not respond with anything other than the affiliations!**
                         Examples of desired output (assuming English, do not include the double quotes):
-                        - "University of Example; Tech Innovations Inc."
-                        - "University A; Company B; Research Institute C; etc."
-                        - "None"
+                        - \"University of Example; Tech Innovations Inc.\"
+                        - \"University A; Company B; Research Institute C; etc.\"
+                        - \"None\"
                         Examples of what to avoid (too detailed):
-                        - "Department of Physics, University of Example" -> should be "University of Example"
-                        - "AI Lab, Company C, Country P" -> should be "Company C"
-                        - "School of Computer Science, University Z, City X" -> should be "University Z"
+                        - \"Department of Physics, University of Example\" -> should be \"University of Example\"
+                        - \"AI Lab, Company C, Country P\" -> should be \"Company C\"
+                        - \"School of Computer Science, University Z, City X\" -> should be \"University Z\"
                         """
 
                         completion = self.client.chat.completions.create(
@@ -279,45 +279,61 @@ class ArxivSummarizer:
             logging.error(f"Error fetching metadata for paper ID {paper_id}: {e}")
             raise
 
-    def summarize_paper(self, title: str, abstract: str) -> tuple[str, str]:
+    def summarize_paper(self, title: str, abstract: str) -> dict:
         """
-        Summarizes the paper and translates its title using the OpenAI API.
-        Returns (translated_title, summary).
+        Summarizes the paper, translates its title, and extracts demo/code links using the OpenAI API.
+        Returns a dictionary with translated_title, summary, demo, and code.
         """
+        prompt = f"""Analyze the following research paper and return a JSON object with following fields: "translated_title", "summary", "keywords", "demo", and "code".
+- "translated_title": Translate the paper's title to {self.summary_language}.
+- "summary": A summary of the paper in {self.summary_language}, up to 3 sentences.
+- "keywords": A list of keywords related to the paper in {self.summary_language}, up to 3.
+- "demo": If the abstract mentions a demo page, provide the full URL. If not, this should be null.
+- "code": If the abstract mentions a code repository (like a GitHub link), provide the full URL. If not, this should be null.
+
+Title: {title}
+Abstract: {abstract}
+
+Your response must be a single JSON object.
+"""
         try:
-            # Summarization
-            summary_prompt = f"""Summarize the following research paper. Provide the most important information in up to 3 sentences. Respond in {self.summary_language}.
-
-            Title: {title}
-            Abstract: {abstract}
-            """
-            summary_completion = self.client.chat.completions.create(
+            completion = self.client.chat.completions.create(
                 model=self.openai_model_name,
-                messages=[{"role": "user", "content": summary_prompt}],
-                temperature=0.7,  # Can be a bit creative for summary
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.5,
+                response_format={"type": "json_object"},
             )
-            summary = summary_completion.choices[0].message.content.strip()
+            response_content = completion.choices[0].message.content
+            summary_data: dict = json.loads(response_content)
 
-            # Title Translation
-            title_prompt = f"Translate the following title of article to {self.summary_language}, only respond with the translated title: {title}"
-            title_completion = self.client.chat.completions.create(
-                model=self.openai_model_name,
-                messages=[{"role": "user", "content": title_prompt}],
-                temperature=0.0,  # Strict translation
+            # Ensure all keys are present, defaulting to None or empty string
+            summary_data.setdefault("translated_title", title)
+            summary_data.setdefault("summary", "")
+            summary_data.setdefault("keywords", [])
+            summary_data.setdefault("demo", None)
+            summary_data.setdefault("code", None)
+
+            return summary_data
+
+        except json.JSONDecodeError as e:
+            logging.error(
+                f"Failed to decode JSON response for paper '{title}': {e}. Response was: {response_content}"
             )
-            translated_title = title_completion.choices[0].message.content.strip()
-
-            return translated_title, summary
-
+            # Return a dict with default values so the process can continue
+            return {
+                "translated_title": title,
+                "summary": "Summary could not be generated.",
+                "demo": None,
+                "code": None,
+            }
         except openai.APIConnectionError as e:
-            logging.error(f"Failed to connect to OpenAI API for summarization/translation: {e}")
+            logging.error(f"Failed to connect to OpenAI API for summarization: {e}")
             raise
         except openai.RateLimitError as e:
-            logging.error(f"OpenAI API rate limit exceeded for summarization/translation: {e}")
+            logging.error(f"OpenAI API rate limit exceeded for summarization: {e}")
             raise
         except Exception as e:
-            # Log and re-raise, but allow process_arxiv_url to catch and continue
-            logging.error(f"Error during summarization or translation for paper '{title}': {e}")
+            logging.error(f"Error during summarization for paper '{title}': {e}")
             raise
 
     def evaluate_relevance(self, title: str, abstract: str, user_interest: str) -> int:
@@ -418,16 +434,8 @@ class ArxivSummarizer:
                         )
                         continue  # Skip to the next paper
 
-                    translated_title, summary = self.summarize_paper(title, abstract)
-                    metadata["summary"] = summary
-                    metadata["translated_title"] = translated_title
-
-                    if user_interest:
-                        relevance_score = self.evaluate_relevance(title, abstract, user_interest)
-                        metadata["relevance"] = relevance_score
-                        logging.info(f"Relevance for '{title}': {relevance_score}")
-                    else:
-                        metadata["relevance"] = 0  # Default to 0 if no interest specified
+                    summary_data = self.summarize_paper(title, abstract)
+                    metadata.update(summary_data)
 
                     papers.append(metadata)
                 except (openai.APIConnectionError, openai.RateLimitError) as e:
@@ -482,6 +490,11 @@ class ArxivSummarizer:
                 if paper_data.get("affiliations"):
                     message_text += f"Affiliations: {paper_data['affiliations']}\n"
                 message_text += f"URL: {paper_data['url']}\n"
+                message_text += f"Keywords: {', '.join(paper_data['keywords'])}\n"
+                if paper_data.get("code"):
+                    message_text += f"Code: {paper_data['code']}\n"
+                if paper_data.get("demo"):
+                    message_text += f"Demo: {paper_data['demo']}\n"
                 if "relevance" in paper_data:  # Add relevance if it exists
                     relevance_map = {0: "Low", 1: "Medium", 2: "High"}
                     message_text += (
