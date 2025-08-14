@@ -1,4 +1,4 @@
-name: Arxiv Summarizer for Music Generation team
+name: Music
 
 on:
   workflow_dispatch:
@@ -31,13 +31,11 @@ jobs:
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
           OPENAI_MODEL_NAME: ${{ vars.OPENAI_MODEL_NAME }}
           SUMMARY_LANGUAGE: ${{ vars.SUMMARY_LANGUAGE }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+
         run: |
-          # Extract just the filename from the full ref path (e.g., eess.AS.yaml)
-          WORKFLOW_FILENAME_WITH_EXT=$(basename "${{ github.workflow_ref }}")
-          # Remove the .yaml or .yml extension, using parameter expansion: ${VAR%.*} removes the shortest match from the end
-          WORKFLOW_BASE_NAME="${WORKFLOW_FILENAME_WITH_EXT%.*}"
           python arxiv_summarizer.py \
             eess.AS \ # Replace with the desired category
             --user_interest "music generation, music information retrieval, music understanding, cross modal interaction with music, language model for music, everything related to music" \
             --filter_level "mid" \
-            --workflow_name "${WORKFLOW_BASE_NAME}" # Pass the extracted value
+            --workflow_name "${WORKFLOW_NAME}"
