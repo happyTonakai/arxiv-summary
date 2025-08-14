@@ -34,7 +34,7 @@ jobs:
           WORKFLOW_NAME: ${{ github.workflow }}
         run: |
           python arxiv_summarizer.py \
-            eess.AS \ # Replace with the desired category
+            eess.AS \
             --user_interest "text-to-speech, speech synthesis, voice conversion, singing generation" \
             --filter_level "mid" \
             --workflow_name "${WORKFLOW_NAME}"

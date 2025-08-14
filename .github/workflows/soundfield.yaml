@@ -35,7 +35,7 @@ jobs:
 
         run: |
           python arxiv_summarizer.py \
-            eess.AS \ # Replace with the desired category
+            eess.AS \
             --user_interest "source separation, audio signal processing, audio understanding, spatial audio, audio generation, cross modal interaction with audio" \
             --filter_level "mid" \
             --workflow_name "${WORKFLOW_NAME}"
