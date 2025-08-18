@@ -36,6 +36,6 @@ jobs:
         run: |
           python arxiv_summarizer.py \
             eess.AS \
-            --user_interest "music generation, music information retrieval, music understanding, cross modal interaction with music, language model for music, everything related to music" \
+            --user_interest "music generation, music information retrieval, music understanding, cross modal interaction with music, language model for music, everything related to music, not interested in spatial audio and speech" \
             --filter_level "mid" \
             --workflow_name "${WORKFLOW_NAME}"

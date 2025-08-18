@@ -344,7 +344,7 @@ Your response must be a single JSON object.
         prompt = f"""Given the following research paper's title and abstract, and a (list of) user's area of interest,
         rate the relevance of the paper to the user's interest.
         Respond with only a single integer:
-        0 for Low relevance to all of the user's interests,
+        0 for Low relevance to all of the user's interests or related to the 'not interested' topics,
         1 for Medium relevance to any of the user's interests,
         2 for High relevance to any of the user's interests.
 

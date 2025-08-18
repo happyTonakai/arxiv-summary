@@ -35,6 +35,6 @@ jobs:
         run: |
           python arxiv_summarizer.py \
             eess.AS \
-            --user_interest "text-to-speech, speech synthesis, voice conversion, singing generation" \
+            --user_interest "text-to-speech, speech synthesis, voice conversion, singing generation, not interested in spatial audio and music" \
             --filter_level "mid" \
             --workflow_name "${WORKFLOW_NAME}"
