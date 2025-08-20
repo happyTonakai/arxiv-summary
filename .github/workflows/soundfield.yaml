@@ -36,6 +36,6 @@ jobs:
         run: |
           python arxiv_summarizer.py \
             eess.AS \
-            --user_interest "source separation, audio signal processing, audio understanding, spatial audio, audio generation, cross modal interaction with audio, not interested in speech and music" \
+            --user_interest "source separation, audio understanding, spatial audio, audio generation, cross modal interaction with audio, not interested in speech, music, microphone array beamforming, sound source localization and sound event detection" \
             --filter_level "mid" \
             --workflow_name "${WORKFLOW_NAME}"
